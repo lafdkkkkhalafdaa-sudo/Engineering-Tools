@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حاسبة كميات المسبح</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="calculator.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="badge">أدوات هندسية</span><h1>حاسبة كميات المسبح</h1><p>أدخل أبعاد مسبحك المستطيل، واعرف كمية المياه ومساحات التشطيب.</p></header>
+    <section class="panel" aria-labelledby="dimensions-title">
+      <h2 id="dimensions-title">أبعاد المسبح</h2>
+      <p class="muted">جميع الأبعاد بالمتر، وتقاس من الداخل. تتحدث النتائج تلقائيًا عند تغيير الأبعاد.</p>
+      <form id="pool-form">
+        <div class="fields">
+          <label>طول المسبح<input name="length" type="number" min="0.01" step="any" value="6.00" required inputmode="decimal"><span>متر</span></label>
+          <label>عرض المسبح<input name="width" type="number" min="0.01" step="any" value="3.50" required inputmode="decimal"><span>متر</span></label>
+          <label>العمق الضحل<input name="shallow" type="number" min="0.01" step="any" value="1.00" required inputmode="decimal"><span>متر</span></label>
+          <label>العمق العميق<input name="deep" type="number" min="0.01" step="any" value="1.60" required inputmode="decimal"><span>متر</span></label>
+        </div>
+        <p id="error" role="alert" hidden></p>
+        <button type="submit">احسب الكميات</button>
+      </form>
+    </section>
+    <section id="results" aria-labelledby="results-title" aria-live="polite" hidden>
+      <h2 id="results-title">الكميات المحسوبة</h2>
+      <div class="cards">
+        <article class="card"><h3>متوسط العمق</h3><p><strong id="averageDepth"></strong> <span>م</span></p><small>متوسط عمقي الطرفين</small></article>
+        <article class="card"><h3>حجم المياه</h3><p><strong id="volume"></strong> <span>م³</span></p><small id="liters"></small></article>
+        <article class="card"><h3>مساحة أرضية المسبح</h3><p><strong id="floor"></strong> <span>م²</span></p><small>تشمل ميل الأرضية</small></article>
+        <article class="card"><h3>مساحة الجدران</h3><p><strong id="walls"></strong> <span>م²</span></p><small>الجدران الأربعة من الداخل</small></article>
+        <article class="card total"><h3>إجمالي التشطيب الداخلي</h3><p><strong id="total"></strong> <span>م²</span></p><small>الأرضية + الجدران</small></article>
+      </div>
+    </section>
+    <aside><h2>كيف نحسب؟</h2><p>نفترض أن الأرضية تميل بانتظام على امتداد طول المسبح، وأن الجدران رأسية. يمكن إدخال عمقين متساويين لمسبح ذي أرضية مستوية.</p><ul><li>متوسط العمق = (العمق الضحل + العمق العميق) ÷ ٢.</li><li>حجم المياه = الطول × العرض × متوسط العمق.</li><li>مساحة الأرضية = العرض × √(الطول² + فرق العمق²).</li><li>مساحة الجدران = (الطول + العرض) × (العمق الضحل + العمق العميق).</li></ul><p class="muted">هذه كميات تقديرية للأبعاد الداخلية، دون الدرج أو المقاعد أو سماكة الهيكل أو هدر مواد التشطيب. حجم المياه يفترض التعبئة حتى أعلى الجدران.</p></aside>
+    <footer>أبعاد واضحة، وتقدير أسهل.</footer>
+  </main>
+</body>
+</html>
