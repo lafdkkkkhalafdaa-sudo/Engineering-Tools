@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حاسبة الخرسانة المسلحة</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="concrete.css">
+  <script src="concrete.js" defer></script>
+</head>
+<body>
+<main>
+  <nav aria-label="التنقل"><a class="back-link" href="index.html">← العودة إلى أدوات المهندس</a></nav>
+  <header><span class="badge">حصر كميات الخرسانة</span><h1>حاسبة الخرسانة المسلحة</h1><p>أدخل أبعاد العناصر، ثم أضف كل عنصر للحصر. يمكنك إضافة أكثر من عنصر من النوع نفسه بأبعاد مختلفة.</p><p class="muted">الأبعاد بالمتر، والكميات بالمتر المكعب. الحساب للكميات الهندسية فقط دون خصم التداخلات أو إضافة الهدر. البنود ذات إجمالي الطول تمثل مجموعة واحدة في خانة العدد.</p></header>
+  <div id="concrete-forms"></div>
+  <section class="panel schedule" aria-labelledby="schedule-title">
+    <h2 id="schedule-title">جدول حصر الخرسانة</h2>
+    <p class="muted">الحصر مؤقت لهذه الصفحة؛ يُمسح عند إعادة تحميلها أو مغادرتها.</p>
+    <p id="empty-list">لم تضف عناصر بعد. أدخل الأبعاد واضغط «إضافة للحصر».</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="جدول الحصر، قابل للتمرير أفقيًا">
+      <table><caption>العناصر المضافة للحصر</caption><thead><tr><th scope="col">نوع العنصر</th><th scope="col">العدد</th><th scope="col">الأبعاد</th><th scope="col">كمية الخرسانة م³</th><th scope="col">حذف</th></tr></thead><tbody id="quantity-rows"></tbody></table>
+    </div>
+    <div class="concrete-summary" aria-live="polite"><h2>إجمالي كمية الخرسانة المسلحة بالمتر المكعب</h2><p><strong id="concrete-total">٠٫٠٠</strong> م³</p></div>
+  </section>
+</main>
+</body>
+</html>

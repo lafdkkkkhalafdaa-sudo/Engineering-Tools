@@ -8,7 +8,7 @@ const path = require('node:path');
 
 test('Arabic interface, automatic calculations and invalid input recovery', async () => {
   const server = createServer(async (request, response) => {
-    const file = {'/': 'index.html', '/index.html': 'index.html', '/pool.html': 'pool.html', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
+    const file = {'/': 'index.html', '/index.html': 'index.html', '/pool.html': 'pool.html', '/concrete.html': 'concrete.html', '/concrete.css': 'concrete.css', '/concrete.js': 'concrete.js', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
     if (!file) { response.writeHead(404); response.end(); return; }
     response.setHeader('Content-Type', file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8');
     response.end(await readFile(path.join(__dirname, file)));
@@ -27,8 +27,8 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
     assert.equal(await page.locator('html').getAttribute('lang'), 'ar');
     assert.equal(await page.title(), 'أدوات المهندس');
     assert.equal(await page.locator('.tool-card').count(), 5);
-    assert.equal(await page.locator('.soon').count(), 4);
-    assert.equal(await page.locator('.tool-card a, a.tool-card').count(), 1);
+    assert.equal(await page.locator('.soon').count(), 3);
+    assert.equal(await page.locator('.tool-card a, a.tool-card').count(), 2);
     for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -58,6 +58,34 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
     await page.getByRole('link', { name: /العودة إلى الصفحة الرئيسية/ }).click();
+    assert.equal(await page.title(), 'أدوات المهندس');
+    await page.getByRole('link', {name: /الخرسانة المسلحة/}).click();
+    assert.equal(await page.title(), 'حاسبة الخرسانة المسلحة');
+    assert.equal(await page.locator('.concrete-form').count(), 7);
+    const form = page.locator('.concrete-form').first();
+    for (const [key,value] of Object.entries({count:'2', length:'2', width:'3', thickness:'0.5'})) await form.locator(`[name=${key}]`).fill(value);
+    await form.getByRole('button', {name:'إضافة للحصر'}).click();
+    assert.equal(await page.locator('#concrete-total').textContent(), format(6));
+    await form.locator('[name=length]').fill('4');
+    await form.getByRole('button', {name:'إضافة للحصر'}).click();
+    assert.equal(await page.locator('#quantity-rows tr').count(), 2);
+    assert.equal(await page.locator('#concrete-total').textContent(), format(18));
+    for (const value of ['0','-1','','1.5']) {
+      await form.locator('[name=count]').fill(value);
+      await form.getByRole('button', {name:'إضافة للحصر'}).click();
+      assert.ok(await form.locator('[role=alert]').isVisible());
+      assert.equal(await page.locator('#quantity-rows tr').count(), 2);
+    }
+    await page.locator('#quantity-rows button').first().click();
+    assert.equal(await page.locator('#concrete-total').textContent(), format(12));
+    await page.locator('#quantity-rows button').click();
+    assert.equal(await page.locator('#concrete-total').textContent(), format(0));
+    assert.ok(await page.locator('#empty-list').isVisible());
+    for (const width of [390,1280]) {
+      await page.setViewportSize({width,height:900});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await page.getByRole('link',{name:/العودة إلى أدوات المهندس/}).click();
     assert.equal(await page.title(), 'أدوات المهندس');
     await page.goto(`http://127.0.0.1:${server.address().port}/pool.html`);
     assert.ok(await page.locator('#results').isVisible());
