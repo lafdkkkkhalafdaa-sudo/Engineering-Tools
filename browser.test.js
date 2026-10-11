@@ -8,7 +8,7 @@ const path = require('node:path');
 
 test('Arabic interface, automatic calculations and invalid input recovery', async () => {
   const server = createServer(async (request, response) => {
-    const file = {'/': 'index.html', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
+    const file = {'/': 'index.html', '/index.html': 'index.html', '/pool.html': 'pool.html', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
     if (!file) { response.writeHead(404); response.end(); return; }
     response.setHeader('Content-Type', file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8');
     response.end(await readFile(path.join(__dirname, file)));
@@ -25,6 +25,16 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
     assert.equal(await page.locator('html').getAttribute('lang'), 'ar');
+    assert.equal(await page.title(), 'أدوات المهندس');
+    assert.equal(await page.locator('.tool-card').count(), 5);
+    assert.equal(await page.locator('.soon').count(), 4);
+    assert.equal(await page.locator('.tool-card a, a.tool-card').count(), 1);
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await page.getByRole('link', { name: /المسابح/ }).click();
+    assert.equal(await page.title(), 'حاسبة كميات المسبح');
     const format = number => new Intl.NumberFormat('ar', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number);
     for (const [id, expected] of Object.entries({averageDepth: 1.3, volume: 27.3, floor: 21.10473880435387, walls: 24.7, total: 45.80473880435387})) {
       assert.equal(await page.locator(`#${id}`).textContent(), format(expected));
@@ -47,6 +57,10 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
       await page.setViewportSize({ width, height: 900 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
+    await page.getByRole('link', { name: /العودة إلى الصفحة الرئيسية/ }).click();
+    assert.equal(await page.title(), 'أدوات المهندس');
+    await page.goto(`http://127.0.0.1:${server.address().port}/pool.html`);
+    assert.ok(await page.locator('#results').isVisible());
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();
