@@ -1,27 +1,13 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>حاسبة الخرسانة المسلحة</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="concrete.css">
-  <script src="concrete.js" defer></script>
-</head>
-<body>
-<main>
-  <nav aria-label="التنقل"><a class="back-link" href="index.html">← العودة إلى أدوات المهندس</a></nav>
-  <header><span class="badge">حصر كميات الخرسانة</span><h1>حاسبة الخرسانة المسلحة</h1><p>أدخل أبعاد العناصر، ثم أضف كل عنصر للحصر. يمكنك إضافة أكثر من عنصر من النوع نفسه بأبعاد مختلفة.</p><p class="muted">الأبعاد بالمتر، والكميات بالمتر المكعب. الحساب للكميات الهندسية فقط دون خصم التداخلات أو إضافة الهدر. البنود ذات إجمالي الطول تمثل مجموعة واحدة في خانة العدد.</p></header>
-  <div id="concrete-forms"></div>
-  <section class="panel schedule" aria-labelledby="schedule-title">
-    <h2 id="schedule-title">جدول حصر الخرسانة</h2>
-    <p class="muted">الحصر مؤقت لهذه الصفحة؛ يُمسح عند إعادة تحميلها أو مغادرتها.</p>
-    <p id="empty-list">لم تضف عناصر بعد. أدخل الأبعاد واضغط «إضافة للحصر».</p>
-    <div class="table-scroll" tabindex="0" role="region" aria-label="جدول الحصر، قابل للتمرير أفقيًا">
-      <table><caption>العناصر المضافة للحصر</caption><thead><tr><th scope="col">نوع العنصر</th><th scope="col">العدد</th><th scope="col">الأبعاد</th><th scope="col">كمية الخرسانة م³</th><th scope="col">حذف</th></tr></thead><tbody id="quantity-rows"></tbody></table>
-    </div>
-    <div class="concrete-summary" aria-live="polite"><h2>إجمالي كمية الخرسانة المسلحة بالمتر المكعب</h2><p><strong id="concrete-total">٠٫٠٠</strong> م³</p></div>
-  </section>
-</main>
-</body>
-</html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>حاسبة حصر الخرسانة</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="concrete.css"><script src="concrete-core.js" defer></script><script src="concrete.js" defer></script></head>
+<body><main>
+<nav class="no-print"><a class="back-link" href="index.html">← العودة إلى أدوات المهندس</a></nav>
+<header><h1>حاسبة حصر الخرسانة</h1><p>الأبعاد بالمتر · الخرسانة م³ · الشدات م² · الحديد kg وton</p></header>
+<section class="panel"><h2>بيانات المشروع</h2><div class="project-fields no-print" id="project-fields"></div><div class="print-only" id="print-project"></div></section>
+<div class="no-print mode-bar"><label>وضع الحصر<select id="mode"><option value="quick">الوضع السريع — الخرسانة فقط</option><option value="advanced">الوضع المتقدم — الهدر والحديد والشدات والتكلفة</option></select></label></div>
+<section class="panel no-print" id="editor"><h2>إدخال العنصر</h2><label>نوع العنصر<select id="element-type"></select></label><p id="formula" class="muted"></p><form id="item-form" novalidate><label>اسم / وصف العنصر (اختياري)<input name="description" maxlength="200" placeholder="مثل F1 أو أعمدة الدور الأرضي"></label><div id="options" class="option-fields"></div><div id="dimensions" class="fields"></div><section id="extra-section" hidden><h3>مناطق زيادة السمك فقط</h3><p>أدخل الزيادة ΔT، وليس السمك الكلي. يجب أن تكون المناطق غير متداخلة.</p><div id="extras"></div><button type="button" id="add-extra">إضافة منطقة</button></section><div class="advanced-only"><label>معامل الحديد لهذا البند (kg/m³)<input name="steelRate" type="number" min="0" step="any" value="0"></label></div><p id="item-error" role="alert" hidden></p><button id="save-item" type="submit">إضافة للحصر</button><button id="cancel-edit" type="button" hidden>إلغاء التعديل</button></form></section>
+<section class="panel schedule"><h2>جدول الحصر</h2><p id="empty-list">لا توجد بنود مضافة.</p><div class="table-scroll"><table><thead><tr><th>نوع العنصر</th><th>الوصف</th><th>العدد</th><th>الأبعاد</th><th>كمية الخرسانة م³</th><th class="no-print">تعديل</th><th class="no-print">نسخ</th><th class="no-print">حذف</th></tr></thead><tbody id="quantity-rows"></tbody></table></div></section>
+<section class="panel summary"><h2>ملخص الكميات</h2><div class="advanced-only no-print"><label>الهدر الاختياري<select id="waste-select"><option value="0">0%</option><option value="2">2%</option><option value="3">3%</option><option value="5">5%</option><option value="custom">Custom — مخصص</option></select></label><label id="custom-waste-label" hidden>نسبة الهدر %<input id="custom-waste" type="number" min="0" step="any" value="0"></label></div><div id="summary-values" aria-live="polite"></div><div class="advanced-only"><p>هذا تقدير مبدئي ولا يغني عن حصر حديد التسليح من اللوحات الإنشائية.</p><p>الحديد محسوب على الكمية الهندسية دون الهدر. الشدات تحسب للعناصر المدعومة فقط؛ السلالم والخزانات واللبشة والبسطات والعناصر المخصصة لا تشمل شدات تلقائية.</p></div></section>
+<section class="panel advanced-only"><h2>التكلفة</h2><p>الأسعار بالعملة الموحدة للمشروع. الخرسانة بسعر كمية الطلب التي تشمل الهدر المختار؛ المصنعية والمضخة والتكاليف الأخرى مبالغ إجمالية. الربح على التكلفة المباشرة مضافًا إليها المصروفات العامة.</p><div id="prices" class="project-fields no-print"></div><div class="print-only" id="print-prices"></div><div id="cost-values"></div></section>
+<p id="settings-error" role="alert" hidden></p><p class="muted">لا خصم تلقائي للفتحات أو التداخلات، ولا هدر افتراضي. الحصر مؤقت ويُمسح عند إعادة تحميل الصفحة. راجع حدود العناصر والتداخلات قبل الاعتماد.</p><button class="no-print" id="print-report" type="button">طباعة التقرير / حفظ PDF</button>
+</main></body></html>

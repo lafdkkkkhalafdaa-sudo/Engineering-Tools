@@ -8,7 +8,7 @@ const path = require('node:path');
 
 test('Arabic interface, automatic calculations and invalid input recovery', async () => {
   const server = createServer(async (request, response) => {
-    const file = {'/': 'index.html', '/index.html': 'index.html', '/pool.html': 'pool.html', '/concrete.html': 'concrete.html', '/concrete.css': 'concrete.css', '/concrete.js': 'concrete.js', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
+    const file = {'/': 'index.html', '/index.html': 'index.html', '/pool.html': 'pool.html', '/concrete.html': 'concrete.html', '/concrete.css': 'concrete.css', '/concrete.js': 'concrete.js', '/concrete-core.js': 'concrete-core.js', '/styles.css': 'styles.css', '/calculator.js': 'calculator.js'}[request.url];
     if (!file) { response.writeHead(404); response.end(); return; }
     response.setHeader('Content-Type', file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8');
     response.end(await readFile(path.join(__dirname, file)));
@@ -60,27 +60,46 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
     await page.getByRole('link', { name: /العودة إلى الصفحة الرئيسية/ }).click();
     assert.equal(await page.title(), 'أدوات المهندس');
     await page.getByRole('link', {name: /الخرسانة المسلحة/}).click();
-    assert.equal(await page.title(), 'حاسبة الخرسانة المسلحة');
-    assert.equal(await page.locator('.concrete-form').count(), 7);
-    const form = page.locator('.concrete-form').first();
-    for (const [key,value] of Object.entries({count:'2', length:'2', width:'3', thickness:'0.5'})) await form.locator(`[name=${key}]`).fill(value);
-    await form.getByRole('button', {name:'إضافة للحصر'}).click();
-    assert.equal(await page.locator('#concrete-total').textContent(), format(6));
+    assert.equal(await page.title(), 'حاسبة حصر الخرسانة');
+    assert.equal(await page.locator('#element-type option').count(), 14);
+    const form = page.locator('#item-form');
+    for (const [key,value] of Object.entries({count:'2',length:'2',width:'3',thickness:'0.5'})) await form.locator(`[name=${key}]`).fill(value);
+    await form.getByRole('button',{name:'إضافة للحصر',exact:true}).click();
+    assert.equal(await page.locator('#quantity-rows tr').count(),1);
+    assert.ok((await page.locator('#summary-values').textContent()).includes(format(6)));
+    await page.locator('#quantity-rows').getByRole('button',{name:'نسخ',exact:true}).click();
+    assert.equal(await page.locator('#quantity-rows tr').count(),2);
     await form.locator('[name=length]').fill('4');
-    await form.getByRole('button', {name:'إضافة للحصر'}).click();
-    assert.equal(await page.locator('#quantity-rows tr').count(), 2);
-    assert.equal(await page.locator('#concrete-total').textContent(), format(18));
-    for (const value of ['0','-1','','1.5']) {
+    await form.getByRole('button',{name:'حفظ التعديل'}).click();
+    assert.ok((await page.locator('#summary-values').textContent()).includes(format(18)));
+    await page.locator('#quantity-rows').getByRole('button',{name:'تعديل',exact:true}).first().click();
+    for(const value of ['0','-1','','1.5']) {
       await form.locator('[name=count]').fill(value);
-      await form.getByRole('button', {name:'إضافة للحصر'}).click();
-      assert.ok(await form.locator('[role=alert]').isVisible());
-      assert.equal(await page.locator('#quantity-rows tr').count(), 2);
+      await form.getByRole('button',{name:'حفظ التعديل'}).click();
+      assert.ok(await page.locator('#item-error').isVisible());
+      assert.equal(await page.locator('#quantity-rows tr').count(),2);
     }
-    await page.locator('#quantity-rows button').first().click();
-    assert.equal(await page.locator('#concrete-total').textContent(), format(12));
-    await page.locator('#quantity-rows button').click();
-    assert.equal(await page.locator('#concrete-total').textContent(), format(0));
-    assert.ok(await page.locator('#empty-list').isVisible());
+    await page.locator('#cancel-edit').click();
+    await page.locator('#mode').selectOption('advanced');
+    await page.locator('#waste-select').selectOption('5');
+    assert.ok((await page.locator('#summary-values').textContent()).includes(format(18.9)));
+    await page.locator('#prices [name=reinforced]').fill('100');
+    assert.ok((await page.locator('#cost-values').textContent()).includes(format(1890)));
+    await page.locator('#quantity-rows').getByRole('button',{name:'حذف',exact:true}).first().click();
+    assert.equal(await page.locator('#quantity-rows tr').count(),1);
+    await page.locator('#element-type').selectOption('flat');
+    await form.locator('[name=areaMode]').check();
+    await form.locator('[name=area]').fill('20');
+    await form.locator('[name=thickness]').fill('0.2');
+    await page.locator('#add-extra').click();
+    for(const [key,value]of Object.entries({count:'1',length:'2',width:'2',delta:'0.1'}))await page.locator(`#extras [name=${key}]`).fill(value);
+    await form.getByRole('button',{name:'إضافة للحصر',exact:true}).click();
+    assert.ok((await page.locator('#quantity-rows tr').last().textContent()).includes(format(4.4)));
+    await page.emulateMedia({media:'print'});
+    assert.ok(await page.locator('#editor').isHidden());
+    assert.ok(await page.locator('#quantity-rows').isVisible());
+    await page.pdf({path:'/tmp/concrete-report-test.pdf',format:'A4'});
+    await page.emulateMedia({media:'screen'});
     for (const width of [390,1280]) {
       await page.setViewportSize({width,height:900});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth), false);

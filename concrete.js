@@ -1,77 +1,53 @@
 'use strict';
-const concreteTypes = [
-  {name:'القواعد المنفصلة', fields:[['count','العدد'],['length','الطول'],['width','العرض'],['thickness','السمك']]},
-  {name:'القواعد الشريطية', fields:[['length','إجمالي الطول'],['width','العرض'],['thickness','السمك']]},
-  {name:'اللبشة', fields:[['length','الطول'],['width','العرض'],['thickness','السمك']]},
-  {name:'الأعمدة', fields:[['count','العدد'],['width','العرض'],['thickness','السمك'],['height','الارتفاع']]},
-  {name:'الجدران الخرسانية', fields:[['length','الطول'],['height','الارتفاع'],['thickness','السمك']]},
-  {name:'الكمرات', fields:[['length','إجمالي الطول'],['width','العرض'],['height','الارتفاع']]},
-  {name:'البلاطات', fields:[['length','الطول'],['width','العرض'],['thickness','السمك']]}
-];
-function concreteVolume(typeIndex, values) {
-  const type = concreteTypes[typeIndex];
-  if (!type) throw new Error('نوع العنصر غير صحيح.');
-  let volume = 1;
-  for (const [key] of type.fields) {
-    const value = values[key];
-    if (!Number.isFinite(value) || value <= 0) throw new Error('أدخل جميع الأبعاد والعدد بقيم أكبر من صفر.');
-    if (key === 'count' && !Number.isSafeInteger(value)) throw new Error('العدد يجب أن يكون عددًا صحيحًا موجبًا.');
-    volume *= value;
-  }
-  if (!Number.isFinite(volume) || volume <= 0) throw new Error('القيم خارج النطاق المسموح للحساب.');
-  return volume;
+(()=>{
+const {TYPES,METHODS,calculateItem,summarize}=ConcreteCore;
+const $=id=>document.getElementById(id);
+const fmt=new Intl.NumberFormat('ar',{minimumFractionDigits:2,maximumFractionDigits:2});
+const labels={count:'العدد',length:'الطول / إجمالي الطول',width:'العرض',depth:'البعد الثاني / السمك',thickness:'السمك',height:'الارتفاع',diameter:'القطر',rise:'الارتفاع الكلي للسلم',steps:'عدد الدرجات',riser:'ارتفاع القائمة',tread:'عرض النائمة',extension:'زيادة النظافة حول القاعدة E',slabThickness:'سمك البلاطة',area:'المساحة',section:'مساحة القطاع',unitVolume:'حجم الوحدة',volume:'الحجم المباشر',wallThickness:'سمك الجدار',roofThickness:'سمك السقف',openings:'مساحة الفتحات',delta:'زيادة السمك ΔT'};
+let items=[],editing=null;
+function inputField(name,title,value='',kind='number'){
+ const label=document.createElement('label');label.textContent=title;
+ const input=document.createElement(kind==='textarea'?'textarea':'input');if(kind!=='textarea')input.type=kind;input.name=name;input.value=value;
+ if(kind==='number'){input.step=['count','steps'].includes(name)?'1':'any';input.min='0';input.inputMode='decimal';}
+ label.append(input);return label;
 }
-if (typeof document !== 'undefined') {
-  const format = new Intl.NumberFormat('ar', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const integerFormat = new Intl.NumberFormat('ar');
-  const entries = [];
-  const rows = document.getElementById('quantity-rows');
-  const total = document.getElementById('concrete-total');
-  function render() {
-    rows.replaceChildren();
-    document.getElementById('empty-list').hidden = entries.length > 0;
-    for (const [index, entry] of entries.entries()) {
-      const row = document.createElement('tr');
-      const type = concreteTypes[entry.typeIndex];
-      const dimensions = type.fields.filter(([key])=>key !== 'count').map(([key,label])=>`${label}: ${format.format(entry.values[key])} م`).join(' × ');
-      for (const text of [type.name, integerFormat.format(entry.values.count || 1), dimensions, format.format(entry.volume)]) {
-        const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
-      }
-      const cell = document.createElement('td');
-      const button = document.createElement('button'); button.type='button'; button.className='delete-button'; button.textContent='حذف';
-      button.setAttribute('aria-label', `حذف ${type.name}، البند ${index+1}`);
-      button.addEventListener('click',()=>{entries.splice(index,1); render();});
-      cell.append(button); row.append(cell); rows.append(row);
-    }
-    total.textContent = format.format(entries.reduce((sum,entry)=>sum+entry.volume,0));
-  }
-  concreteTypes.forEach((type,typeIndex)=>{
-    const section = document.createElement('section'); section.className='panel concrete-form';
-    const heading = document.createElement('h2'); heading.textContent=type.name; section.append(heading);
-    const formula = document.createElement('p'); formula.className='muted'; formula.textContent=type.fields.map(([,label])=>label).join(' × '); section.append(formula);
-    const form = document.createElement('form'); form.noValidate=true;
-    const fields = document.createElement('div'); fields.className='fields';
-    for (const [key,title] of type.fields) {
-      const label = document.createElement('label'); label.append(title);
-      const input = document.createElement('input'); input.type='number'; input.name=key; input.min=key==='count'?'1':'0'; input.step=key==='count'?'1':'any'; input.required=true; input.inputMode=key==='count'?'numeric':'decimal';
-      if (key==='count') input.value='1';
-      const unit = document.createElement('span'); unit.textContent=key==='count'?'عنصر':'متر';
-      label.append(input,unit); fields.append(label);
-    }
-    const error = document.createElement('p'); error.className='concrete-error'; error.setAttribute('role','alert'); error.hidden=true;
-    const button = document.createElement('button'); button.type='submit'; button.textContent='إضافة للحصر';
-    form.append(fields,error,button);
-    form.addEventListener('submit',event=>{
-      event.preventDefault();
-      try {
-        const values = Object.fromEntries(type.fields.map(([key])=>[key,form.elements.namedItem(key).valueAsNumber]));
-        const volume = concreteVolume(typeIndex,values);
-        if (!Number.isFinite(entries.reduce((sum,entry)=>sum+entry.volume,volume))) throw new Error('الإجمالي خارج النطاق المسموح للحساب.');
-        entries.push({typeIndex,values,volume}); error.hidden=true; render();
-      } catch (problem) {error.textContent=problem.message; error.hidden=false;}
-    });
-    section.append(form); document.getElementById('concrete-forms').append(section);
-  });
-  render();
+for(const [name,title,kind] of [['project','اسم المشروع','text'],['location','الموقع','text'],['client','العميل','text'],['date','التاريخ','date'],['engineer','اسم المهندس','text'],['notes','ملاحظات','textarea']])$('project-fields').append(inputField(name,title,'',kind));
+for(const [key,t]of Object.entries(TYPES)){const o=document.createElement('option');o.value=key;o.textContent=t[0];$('element-type').append(o);}
+$('element-type').value='footing';
+const priceLabels={plain:'سعر م³ الخرسانة العادية',reinforced:'سعر م³ الخرسانة المسلحة',steel:'سعر طن الحديد',formwork:'سعر م² الشدات',labor:'المصنعية (إجمالي)',pump:'المضخة (إجمالي)',other:'تكاليف أخرى (إجمالي)',overhead:'مصروفات عامة %',profit:'ربح %'};
+for(const [key,title]of Object.entries(priceLabels))$('prices').append(inputField(key,title,0));
+function option(name,title,kind='checkbox',choices=[]){const label=document.createElement('label');label.textContent=title;let input;if(kind==='select'){input=document.createElement('select');for(const [value,text]of choices){const o=document.createElement('option');o.value=value;o.textContent=text;input.append(o);}}else{input=document.createElement('input');input.type='checkbox';label.className='check';}input.name=name;label.append(input);$('options').append(label);input.addEventListener('change',()=>renderDimensions());}
+function options(){const result={};for(const el of $('options').querySelectorAll('input,select'))result[el.name]=el.type==='checkbox'?el.checked:el.value;if(result.faces)result.faces=Number(result.faces);return result;}
+function renderDimensions(values){const old=values||Object.fromEntries([...$('dimensions').querySelectorAll('input')].map(el=>[el.name,el.value]));const type=$('element-type').value,o=options();let fields=TYPES[type][1];if((type==='slab'||type==='flat')&&o.areaMode)fields='area thickness';if(type==='custom')fields=METHODS[o.method];if(type==='clean')fields+=' extension';if(type==='wall'&&o.deduct)fields+=' openings';if(type==='beam'&&o.dropped)fields+=' slabThickness';if(type==='tank'&&o.roof)fields+=' roofThickness';$('dimensions').replaceChildren();for(const key of fields.split(' ')){const unit=['count','steps'].includes(key)?'': ['area','section','openings'].includes(key)?' (م²)':['volume','unitVolume'].includes(key)?' (م³)':' (م)';$('dimensions').append(inputField(key,labels[key]+unit,old[key]??(['count','steps'].includes(key)?1:key==='extension'?0:'')));}}
+function setupEditor(item){const type=$('element-type').value;$('formula').textContent=TYPES[type][2];$('options').replaceChildren();
+ if(type==='footing')option('sides','حساب شدات جوانب القواعد');
+ if(type==='wall'){option('deduct','خصم مساحة الفتحات اختياريًا');option('faces','وجوه شدات الجدار','select',[['2','وجهان'],['1','وجه واحد']]);}
+ if(type==='beam')option('dropped','حساب الجزء الساقط فقط (خصم سمك البلاطة)');
+ if(type==='slab'||type==='flat')option('areaMode','إدخال المساحة مباشرة');
+ if(type==='tank')option('roof','إضافة سقف (الأبعاد المدخلة داخلية، وارتفاع الجدران بين القاعدة والسقف)');
+ if(type==='custom'){option('method','طريقة الحساب','select',[['box','L × B × T'],['section','Total Length × Section'],['area','Area × Thickness'],['unit','Number × Unit Volume'],['direct','Direct Volume']]);option('plain','خرسانة عادية');}
+ if(item)for(const el of $('options').querySelectorAll('input,select')){if(el.type==='checkbox')el.checked=!!item.options[el.name];else if(item.options[el.name]!==undefined)el.value=item.options[el.name];}
+ renderDimensions(item?.values||{});$('extras').replaceChildren();$('extra-section').hidden=!['raft','flat'].includes(type);for(const extra of item?.extras||[])addExtra(extra);
+ $('item-form').elements.namedItem('description').value=item?.description||'';$('item-form').elements.namedItem('steelRate').value=item?.steelRate??0;$('item-error').hidden=true;
 }
-if (typeof module !== 'undefined') module.exports={concreteTypes,concreteVolume};
+function addExtra(values={}){const row=document.createElement('div');row.className='extra-row';for(const key of ['count','length','width','delta'])row.append(inputField(key,labels[key],values[key]??(key==='count'?1:'')));const b=document.createElement('button');b.type='button';b.textContent='حذف المنطقة';b.addEventListener('click',()=>row.remove());row.append(b);$('extras').append(row);}
+$('add-extra').addEventListener('click',()=>addExtra());
+function cancelEdit(){editing=null;$('save-item').textContent='إضافة للحصر';$('cancel-edit').hidden=true;setupEditor();}
+$('element-type').addEventListener('change',cancelEdit);$('cancel-edit').addEventListener('click',cancelEdit);
+function edit(index){editing=index;const item=items[index];$('element-type').value=item.type;setupEditor(item);$('save-item').textContent='حفظ التعديل';$('cancel-edit').hidden=false;$('editor').scrollIntoView({behavior:'smooth'});}
+$('item-form').addEventListener('submit',event=>{event.preventDefault();try{const item={type:$('element-type').value,description:$('item-form').elements.namedItem('description').value,values:Object.fromEntries([...$('dimensions').querySelectorAll('input')].map(el=>[el.name,el.valueAsNumber])),options:options(),steelRate:$('item-form').elements.namedItem('steelRate').valueAsNumber,extras:[...$('extras').children].map(row=>Object.fromEntries([...row.querySelectorAll('input')].map(el=>[el.name,el.valueAsNumber])))};calculateItem(item);const next=items.slice();if(editing===null)next.push(item);else next[editing]=item;summarize(next);items=next;cancelEdit();render();}catch(e){$('item-error').textContent=e.message;$('item-error').hidden=false;}});
+function settings(){const advanced=$('mode').value==='advanced';const waste=advanced?($('waste-select').value==='custom'?$('custom-waste').valueAsNumber:Number($('waste-select').value)):0;return {waste,prices:advanced?Object.fromEntries([...$('prices').querySelectorAll('input')].map(el=>[el.name,el.valueAsNumber])):{}};}
+function lines(container,values){container.replaceChildren();for(const [label,value,unit]of values){const p=document.createElement('div');p.className='summary-line';const name=document.createElement('span');name.textContent=label;const strong=document.createElement('strong');strong.textContent=`${fmt.format(value)} ${unit}`;p.append(name,strong);container.append(p);}}
+function render(){document.body.classList.toggle('quick',$('mode').value==='quick');$('quantity-rows').replaceChildren();$('empty-list').hidden=items.length>0;for(const [index,item]of items.entries()){const r=calculateItem(item),row=document.createElement('tr');let dimensions=Object.entries(item.values).filter(([key])=>key!=='count').map(([key,value])=>`${labels[key]}: ${fmt.format(value)}`).join('، ');if(item.extras.length)dimensions+='؛ زيادات: '+item.extras.map(e=>`${fmt.format(e.count)} × ${fmt.format(e.length)} × ${fmt.format(e.width)} × Δ${fmt.format(e.delta)}`).join('؛ ');dimensions+='؛ '+Object.entries(item.options).map(([k,v])=>`${({sides:'شدات الجوانب',deduct:'خصم الفتحات',faces:'عدد وجوه الشدات',dropped:'الجزء الساقط فقط',areaMode:'مساحة مباشرة',roof:'سقف',plain:'خرسانة عادية',method:'طريقة الحساب'})[k]}: ${typeof v==='boolean'?(v?'نعم':'لا'):({box:'الأبعاد',section:'الطول × القطاع',area:'المساحة × السمك',unit:'العدد × حجم الوحدة',direct:'حجم مباشر'})[v]||v}`).join('، ');if(item.type==='tank')dimensions+=`؛ قاعدة ${fmt.format(r.parts.base)}، جدران ${fmt.format(r.parts.walls)}، سقف ${fmt.format(r.parts.roof)} م³`;if(item.type==='stair')dimensions+=`؛ قلبة ${fmt.format(r.parts.waist)}، درجات ${fmt.format(r.parts.steps)} م³`;
+ for(const value of [TYPES[item.type][0],item.description||'—',item.values.count||1,dimensions,fmt.format(r.volume)]){const td=document.createElement('td');td.textContent=value;row.append(td);}for(const [label,fn]of [['تعديل',()=>edit(index)],['نسخ',()=>{items.push(JSON.parse(JSON.stringify(item)));render();edit(items.length-1);}],['حذف',()=>{items.splice(index,1);cancelEdit();render();}]]){const td=document.createElement('td');td.className='no-print';const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',fn);td.append(b);row.append(td);}if($('mode').value==='advanced')dimensions+=`؛ معامل الحديد ${fmt.format(item.steelRate)} kg/m³، حديد ${fmt.format(r.steel)} kg، شدات ${fmt.format(r.formwork)} م²`;row.children[3].textContent=dimensions;$('quantity-rows').append(row);}
+ try{const s=summarize(items,settings());const advanced=$('mode').value==='advanced';const values=[['إجمالي الخرسانة العادية',s.plain,'م³'],['إجمالي الخرسانة المسلحة',s.reinforced,'م³'],['الإجمالي الهندسي',s.geometric,'م³']];if(advanced)values.push(['كمية الهدر',s.waste,'م³'],['الكمية المقترحة للطلب',s.order,'م³'],['الحديد التقديري',s.steel,'kg'],['الحديد التقديري بالطن',s.tons,'ton'],['الشدات',s.formwork,'م²']);lines($('summary-values'),values);lines($('cost-values'),[['التكلفة المباشرة',s.direct,''],['المصروفات العامة',s.overhead,''],['الربح',s.profit,''],['الإجمالي النهائي',s.final,'']]);$('settings-error').hidden=true;}catch(e){$('settings-error').textContent=e.message;$('settings-error').hidden=false;$('summary-values').replaceChildren();$('cost-values').replaceChildren();}}
+$('mode').addEventListener('change',render);$('waste-select').addEventListener('change',()=>{$('custom-waste-label').hidden=$('waste-select').value!=='custom';render();});$('custom-waste').addEventListener('input',render);$('prices').addEventListener('input',render);$('print-report').addEventListener('click',()=>{if(!$('settings-error').hidden||editing!==null){alert('صحح إعدادات الحساب وأكمل التعديل قبل الطباعة.');return;}window.print();});setupEditor();render();
+
+function preparePrint(){
+ $('print-project').replaceChildren();
+ for(const label of $('project-fields').children){const p=document.createElement('p');p.textContent=`${label.firstChild.textContent}: ${label.querySelector('input,textarea').value||'—'}`;$('print-project').append(p);}
+ $('print-prices').replaceChildren();
+ for(const el of $('prices').querySelectorAll('input')){const p=document.createElement('p');p.textContent=`${priceLabels[el.name]}: ${fmt.format(el.valueAsNumber)}`;$('print-prices').append(p);}
+}
+window.addEventListener('beforeprint',preparePrint);
+})();
