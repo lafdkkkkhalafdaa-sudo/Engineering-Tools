@@ -13,6 +13,8 @@ const TYPES = {
  stair:['السلالم','length rise width thickness steps riser tread','√(L² + Rise²) × B × T + N × 0.5 × Riser × Tread × B'],
  landing:['البسطات','length width thickness','L × B × T'],
  tank:['الخزانات والأحواض والمسابح الخرسانية','length width height thickness wallThickness','قاعدة + جدران دون تكرار الأركان + سقف اختياري'],
+ hollowOne:['بلاطة هوردي اتجاه واحد — One-Way Hollow Block','length width topping ribWidth ribDepth ribLengthX','طبقة الضغط + الأعصاب دون الكمرات'],
+ hollowTwo:['بلاطة هوردي اتجاهين — Two-Way Hollow Block','length width topping ribWidth ribDepth ribLengthX ribLengthY','طبقة الضغط + أعصاب X + أعصاب Y − التقاطعات'],
  custom:['عنصر خرسانة مخصص','length width thickness','حسب الطريقة المختارة']
 };
 const METHODS={box:'length width thickness',section:'length section',area:'area thickness',unit:'count unitVolume',direct:'volume'};
@@ -26,6 +28,15 @@ function calculateItem(item){
  const n=v.count||1;let volume=0,formwork=0,parts={};
  const extra=()=> (item.extras||[]).reduce((sum,e)=>{['count','length','width','delta'].forEach(k=>positive(e[k],k));if(!Number.isSafeInteger(e.count))throw Error('عدد المناطق غير صحيح');return sum+e.count*e.length*e.width*e.delta;},0);
  switch(type){
+ case 'hollowOne':case 'hollowTwo':{
+ const ribCount=(axis,span)=>{const mode=o['ribMode'+axis]||'actual';if(mode==='spacing'){const spacing=positive(v['spacing'+axis],'المسافة بين الأعصاب');if(spacing<v.ribWidth)throw Error('المسافة بين الأعصاب أقل من عرض العصب');return Math.floor(span/spacing)+1;}const count=positive(v['ribs'+axis],'عدد الأعصاب');if(!Number.isSafeInteger(count))throw Error('عدد الأعصاب يجب أن يكون صحيحًا موجبًا');return count;};
+ const nx=ribCount('X',v.width);const ny=type==='hollowTwo'?ribCount('Y',v.length):0;
+ if(v.ribWidth>Math.min(v.length,v.width)||v.ribLengthX>v.length||(ny&&v.ribLengthY>v.width))throw Error('أبعاد الأعصاب تتجاوز أبعاد البلاطة');
+ if(nx*v.ribWidth>v.width||(ny&&ny*v.ribWidth>v.length))throw Error('عدد الأعصاب وعرضها غير منطقيين لأبعاد البلاطة');
+ parts.topping=v.length*v.width*v.topping;parts.ribsX=nx*v.ribLengthX*v.ribWidth*v.ribDepth;parts.ribsY=ny?ny*v.ribLengthY*v.ribWidth*v.ribDepth:0;
+ parts.intersections=nx*ny;parts.overlap=nx*ny*v.ribWidth**2*v.ribDepth;parts.countX=nx;parts.countY=ny;
+ if(parts.overlap>Math.min(parts.ribsX,parts.ribsY)&&ny)throw Error('خصم التقاطعات يتجاوز حجم الأعصاب؛ راجع الأطوال والأعداد');
+ volume=parts.topping+parts.ribsX+parts.ribsY-parts.overlap;formwork=v.length*v.width;break;}
  case 'clean':{const e=nonnegative(v.extension??0);volume=n*(v.length+2*e)*(v.width+2*e)*v.thickness;break;}
  case 'footing': volume=n*v.length*v.width*v.thickness;if(o.sides)formwork=n*2*(v.length+v.width)*v.thickness;break;
  case 'strip':case 'landing':volume=v.length*v.width*v.thickness;break;
