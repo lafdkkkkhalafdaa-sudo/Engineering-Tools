@@ -96,6 +96,9 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
     await form.getByRole('button',{name:'إضافة للحصر',exact:true}).click();
     assert.ok((await page.locator('#quantity-rows tr').last().textContent()).includes(format(4.4)));
     await page.locator('#element-type').selectOption('hollowTwo');
+    assert.equal(await form.locator('.rib-group').count(),2);
+    assert.ok((await form.locator('.rib-group').first().textContent()).includes('طول العصب الصافي بين وجهي المساند/الكمرات X'));
+    assert.ok((await form.locator('.rib-group').last().textContent()).includes('طول العصب الصافي بين وجهي المساند/الكمرات Y'));
     for(const [key,value]of Object.entries({length:'6',width:'5',topping:'0.05',ribWidth:'0.1',ribDepth:'0.2',ribsX:'11',ribLengthX:'6',ribsY:'13',ribLengthY:'5'}))await form.locator(`[name=${key}]`).fill(value);
     await form.getByRole('button',{name:'إضافة للحصر',exact:true}).click();
     assert.ok((await page.locator('#quantity-rows tr').last().textContent()).includes(format(3.834)));
@@ -138,6 +141,32 @@ test('Arabic interface, automatic calculations and invalid input recovery', asyn
       await page.setViewportSize({width,height:900});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth), false);
     }
+    // Reproduce three saved items totalling 10.49, with inactive custom waste blank.
+    page.once('dialog',dialog=>dialog.accept());await page.locator('#new-project').click();
+    await page.locator('#project-fields [name=project]').fill('حفظ ثلاثة عناصر');
+    await page.locator('#element-type').selectOption('custom');
+    await form.locator('[name=method]').selectOption('direct');
+    for(const volume of ['2.82','3.834','3.836']){
+      await form.locator('[name=method]').selectOption('direct');
+      await form.locator('[name=volume]').fill(volume);
+      await form.getByRole('button',{name:'إضافة للحصر',exact:true}).click();
+    }
+    await page.locator('#custom-waste').evaluate(el=>el.value='');
+    await page.locator('#save-project').click();
+    assert.ok((await page.locator('#storage-status').textContent()).includes('التحقق'));
+    await page.reload();
+    assert.equal(await page.locator('#quantity-rows tr').count(),3);
+    assert.ok((await page.locator('#summary-values').textContent()).includes(format(10.49)));
+    assert.equal(await page.locator('#project-fields [name=project]').inputValue(),'حفظ ثلاثة عناصر');
+    // F5 recovery when persistent storage is unavailable but session storage works.
+    await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Storage blocked','SecurityError');}}));
+    await page.reload();
+    assert.equal(await page.locator('#quantity-rows tr').count(),3);
+    await page.locator('#save-project').click();
+    assert.ok((await page.locator('#storage-status').textContent()).includes('الجلسة'));
+    await page.reload();
+    assert.equal(await page.locator('#quantity-rows tr').count(),3);
+    assert.ok((await page.locator('#summary-values').textContent()).includes(format(10.49)));
     await page.getByRole('link',{name:/العودة إلى أدوات المهندس/}).click();
     assert.equal(await page.title(), 'أدوات المهندس');
     await page.goto(`http://127.0.0.1:${server.address().port}/pool.html`);

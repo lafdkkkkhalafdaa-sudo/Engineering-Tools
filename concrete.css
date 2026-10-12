@@ -5,3 +5,5 @@ select{display:block;width:100%;font:inherit;padding:10px;border:1px solid #b9cc
 .project-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px}.project-actions p{width:100%}td:nth-child(4){min-width:220px;max-width:340px;overflow-wrap:anywhere}.table-scroll{max-width:100%}@media print{td:nth-child(4){min-width:0;max-width:none}}
 
 td details summary{cursor:pointer;color:#087c85}td details p{line-height:1.7;margin:6px 0}@media print{td details summary{display:none}td details p{margin:0}}
+
+.rib-group{border:1px solid #dce7ea;border-radius:10px;padding:14px;min-width:0;display:grid;gap:12px}.rib-group legend{font-weight:bold;color:#087c85;padding:0 8px}
