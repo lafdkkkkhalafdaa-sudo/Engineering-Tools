@@ -43,3 +43,5 @@ test('spacing estimates, missing values, invalid rib geometry and excessive over
  assert.throws(()=>calculateItem(item('hollowTwo',{...hollowValues,ribsX:1000})));
  assert.throws(()=>calculateItem(item('hollowOne',{...hollowValues,spacingX:0},{ribModeX:'spacing'})));
 });
+
+test('requested combined quantities and slab advanced regression',()=>{const total=summarize([item('hollowOne',hollowValues),item('hollowTwo',hollowValues)]);near(total.geometric,6.654);assert.equal(total.geometric.toFixed(2),'6.65');const slab=summarize([{...item('slab',{length:10,width:8,thickness:.2}),steelRate:100}],{waste:5});near(slab.geometric,16);near(slab.steel,1600);near(slab.tons,1.6);near(slab.order,16.8);near(slab.formwork,80);});
